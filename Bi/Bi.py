@@ -102,7 +102,7 @@ class CBi:
 
         @return: A string representing the direction and KLine range.
         """
-        return f"{self.dir}|{self.begin_klc} ~ {self.end_klc}"
+        return f"{self.dir}\t|start:{self.begin_klc} ~ end:{self.end_klc}\n"
 
     def check(self):
         """

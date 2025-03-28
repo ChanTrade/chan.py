@@ -132,7 +132,7 @@ class CKLine_Combiner(Generic[T]):
         # allow_top_equal = -1 被包含，底部相等不合并
         combine_item = CCombine_Item(unit_kl)
         if isinstance(unit_kl, CKLine_Unit):    
-            logger.info(f"[Try_Add_KLU Processing type: CKLine_Unit, time_begin={combine_item.time_begin}, time_end={combine_item.time_end}")
+            logger.info(f"\n[Try_Add_KLU Processing type: CKLine_Unit, time_begin={combine_item.time_begin}, time_end={combine_item.time_end}")
         else:
             logger.info(f"[Try_Add_Bi_Seg] Processing type: {type(unit_kl)}, time_begin={combine_item.time_begin}, time_end={combine_item.time_end}")
 

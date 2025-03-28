@@ -76,9 +76,19 @@ if log_to_file:
 else:
     handler = logging.StreamHandler()
 # Set logging format
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+# formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 # Add handler to the logger
 logger.addHandler(handler)
+
+def tabs(n):
+    """
+    Returns a string with n tab characters.
+    
+    :param n: Number of tab characters
+    :return: String with n tab characters
+    """
+    return "\t" * n
 
 

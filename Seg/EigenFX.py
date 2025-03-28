@@ -21,46 +21,51 @@ class CEigenFX:
         self.which_ele = -1
 
     def treat_first_ele(self, bi: CBi) -> bool:
-        logger.info(f"[EigenFX] treat_first_ele --->: , which_ele: {self.which_ele} {bi}")
+        logger.info(f"[EigenFX] treat_first_ele --->: which_ele: {self.which_ele}\n{bi}")
         self.ele[0] = CEigen(bi, self.kl_dir)
         self.which_ele = 0
-        logger.info(f"[EigenFX] treat_first_ele <---: , which_ele: {self.which_ele} {bi}")
+        logger.info(f"[EigenFX] treat_first_ele <---: which_ele: {self.which_ele}\n{bi}")
         return False
 
     def treat_second_ele(self, bi: CBi) -> bool:
         assert self.ele[0] is not None
-        logger.info(f"[EigenFX] treat_second_ele --->: , which_ele: {self.which_ele} {bi}")
+        logger.info(f"[EigenFX] treat_second_ele --->: which_ele: {self.which_ele}\n{bi}")
+        # 处理特征序列分型是否需要合并
         combine_dir = self.ele[0].try_add(bi, exclude_included=self.exclude_included)
         if combine_dir != KLINE_DIR.COMBINE:  # 不能合并
+            # 用第二条同向笔，创建新的特征序列分型
             self.ele[1] = CEigen(bi, self.kl_dir)
             self.which_ele = 1
             if (self.is_up() and self.ele[1].high < self.ele[0].high) or \
                (self.is_down() and self.ele[1].low > self.ele[0].low):  # 前两元素不可能成为分形
-                logger.info(f"[EigenFX] treat_second_ele reset <---: , which_ele: {self.which_ele} {bi}")
                 return self.reset()
-        logger.info(f"[EigenFX] treat_second_ele <---: , which_ele: {self.which_ele} {bi}")
+        logger.info(f"[EigenFX] treat_second_ele <---: which_ele: {self.which_ele}\n{bi}")
         return False
 
     def treat_third_ele(self, bi: CBi) -> bool:
         assert self.ele[0] is not None
         assert self.ele[1] is not None
-        logger.info(f"[EigenFX] treat_third_ele --->: , which_ele: {self.which_ele} {bi}")
+        logger.info(f"[EigenFX] treat_third_ele --->: which_ele: {self.which_ele}\n{bi}")
         self.last_evidence_bi = bi
         allow_top_equal = (1 if bi.is_down() else -1) if self.exclude_included else None
         combine_dir = self.ele[1].try_add(bi, allow_top_equal=allow_top_equal)
         if combine_dir == KLINE_DIR.COMBINE:
-            logger.info(f"[EigenFX] treat_third_ele combine_dir == KLINE_DIR.COMBINE <---: , which_ele: {self.which_ele} {bi}")
+            logger.info(f"[EigenFX] treat_third_ele combine_dir == KLINE_DIR.COMBINE <---: which_ele: {self.which_ele}\n{bi}")
             return False
         self.ele[2] = CEigen(bi, combine_dir)
         self.which_ele = 2
         if not self.actual_break():
-            logger.info(f"[EigenFX] treat_third_ele reset <---: , which_ele: {self.which_ele} {bi}")
             return self.reset()
         self.ele[1].update_fx(self.ele[0], self.ele[2], exclude_included=self.exclude_included, allow_top_equal=allow_top_equal)  # type: ignore
         fx = self.ele[1].fx
         is_fx = (self.is_up() and fx == FX_TYPE.TOP) or (self.is_down() and fx == FX_TYPE.BOTTOM)
-        logger.info(f"[EigenFX] treat_third_ele <---: , which_ele: {self.which_ele} {bi}, is_fx: {is_fx}")
-        return True if is_fx else self.reset()
+
+        if is_fx:
+            logger.info(f"[EigenFX] treat_third_ele <---: which_ele: {self.which_ele}\n{bi}, is_fx: {is_fx}")
+            return True
+        else:
+            self.reset()
+            return False
 
     def add(self, bi: CBi) -> bool:  # 返回是否出现分形
         assert bi.dir != self.dir
@@ -76,22 +81,32 @@ class CEigenFX:
         else:
             raise CChanException(f"特征序列3个都找齐了还没处理!! 当前笔:{bi.idx},当前:{str(self)}", ErrCode.SEG_EIGEN_ERR)
         
-        logger.info(f"[EigenFX] dir: {self.dir} , which_ele: {self.which_ele} add <---: {bi}, ret: {ret}")
+        logger.info(f"[EigenFX] dir: {self.dir} , which_ele: {self.which_ele} add <---: ret: {ret}")
         return ret
 
     def reset(self):
+        logger.info(f"[EigenFX] reset --->: which_ele: {self.which_ele}")
+        # 重置特征序列分型
+        self.which_ele = -1
+        # 从线段的第二笔开始
         bi_tmp_list = list(self.lst[1:])
         if self.exclude_included:
+            # 需要处理 笔包含关系
             self.clear()
             for bi in bi_tmp_list:
+                # 逐笔处理分型，直到处理完成或者出现分型
                 if self.add(bi):
+                    logger.info(f"[EigenFX] reset <---: which_ele: {self.which_ele}")
                     return True
         else:
+            # 不需要处理 笔包含关系
             assert self.ele[1] is not None
             ele2_begin_idx = self.ele[1].lst[0].idx
+            # 重置特征序列分型
             self.ele[0], self.ele[1], self.ele[2] = self.ele[1], self.ele[2], None
+            # 从第二元素开始
             self.lst = [bi for bi in bi_tmp_list if bi.idx >= ele2_begin_idx]  # 从第二元素开始
-
+        logger.info(f"[EigenFX] reset <---: which_ele: {self.which_ele}")
         return False
 
     def can_be_end(self, bi_lst: CBiList):
@@ -119,8 +134,10 @@ class CEigenFX:
         assert self.last_evidence_bi is not None
         return next((False for bi in self.lst if not bi.is_sure), self.last_evidence_bi.is_sure)
 
-    def clear(self):
+    def clear(self):#
+        # 清空特征序列分型
         self.ele = [None, None, None]
+        # 清空笔列表
         self.lst = []
 
     def __str__(self):

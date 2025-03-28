@@ -18,8 +18,8 @@ class CKLine(CKLine_Combiner[CKLine_Unit]):
         if self.fx == FX_TYPE.TOP:
             fx_token = "^"
         elif self.fx == FX_TYPE.BOTTOM:
-            fx_token = "_"
-        return f"{self.idx}th IsFx:{fx_token}:{self.time_begin}~{self.time_end}({self.kl_type}|{len(self.lst)}) low={self.low} high={self.high}"
+            fx_token = "v"
+        return f"{self.idx}th\tIsFx:{fx_token}:\t{self.time_begin}~{self.time_end}({self.kl_type}|{len(self.lst)}) low={self.low:.2f} high={self.high:.2f}"
 
     def GetSubKLC(self):
         # 可能会出现相邻的两个KLC的子KLC会有重复

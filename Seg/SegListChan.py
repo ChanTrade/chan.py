@@ -19,11 +19,13 @@ class CSegListChan(CSegListComm):
                 bi.parent_seg = None
             if _seg.pre:
                 _seg.pre.next = None
+            logger.info(f"[SegListChan] do_init_u0 --->: pop un-sure seg_u0: {_seg}")
             self.lst.pop()
         if len(self):
             assert self.lst[-1].eigen_fx and self.lst[-1].eigen_fx.ele[-1]
             if not self.lst[-1].eigen_fx.ele[-1].lst[-1].is_sure:
                 # 如果确定线段的分形的第三元素包含不确定笔，也需要重新算，不然线段分形元素的高低点可能不对
+                logger.info(f"[SegListChan] do_init_u1 --->: pop un-sure seg_u1: {self.lst[-1]}")
                 self.lst.pop()
 
     def update(self, bi_lst: CBiList):
@@ -36,16 +38,18 @@ class CSegListChan(CSegListComm):
         else:
             logger.info(f"[SegListChan] 1.2.1-update --->: begin_idx={self[-1].end_bi.idx+1}")
             self.cal_seg_sure(bi_lst, begin_idx=self[-1].end_bi.idx+1)
+
+        logger.info(f"[SegListChan] 1.3-update --->: collect_left_seg")
         self.collect_left_seg(bi_lst)
-        logger.info(f"[SegListChan] 1.3-update <---: seg_cnt={len(self.lst)}")
+        logger.info(f"[SegListChan] 1.4-update <---: seg_cnt={len(self.lst)}")
 
     def cal_seg_sure(self, bi_lst: CBiList, begin_idx: int):
-        logger.info(f"[SegListChan] 1.0-cal_seg_sure --->: bi_list:\n{bi_lst}\nbegin_idx: {begin_idx}")
+        logger.info(f"[SegListChan] 1.0-cal_seg_sure --->begin_idx: {begin_idx}\n{bi_lst}")
         up_eigen = CEigenFX(BI_DIR.UP, lv=self.lv)  # 上升线段下降笔
         down_eigen = CEigenFX(BI_DIR.DOWN, lv=self.lv)  # 下降线段上升笔
         last_seg_dir = None if len(self) == 0 else self[-1].dir
         for bi in bi_lst[begin_idx:]:
-            logger.info(f"[SegListChan] 1.1-cal_seg_sure for eigen --->: {bi}")
+            logger.info(f"[SegListChan] 1.1-cal_seg_sure preocess bi for eigen --->: {bi}")
             fx_eigen = None
             if bi.is_down() and last_seg_dir != BI_DIR.UP:
                 if up_eigen.add(bi):
@@ -68,6 +72,8 @@ class CSegListChan(CSegListComm):
             if fx_eigen:
                 self.treat_fx_eigen(fx_eigen, bi_lst)
                 break
+            logger.info(f"[SegListChan] 1.1-cal_seg_sure preocess bi for eigen <---\n")
+
         logger.info(f"[SegListChan] 1.2-cal_seg_sure <---: seg_cnt={len(self.lst)}")
 
     def treat_fx_eigen(self, fx_eigen, bi_lst: CBiList):

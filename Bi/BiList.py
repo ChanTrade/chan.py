@@ -16,7 +16,7 @@ class CBiList:
         self.free_klc_lst = []  # 仅仅用作第一笔未画出来之前的缓存，为了获得更精准的结果而已，不加这块逻辑其实对后续计算没太大影响
 
     def __str__(self):
-        return "\n".join([ f"\n" + str(bi) for bi in self.bi_list])
+        return "\n".join([str(bi) for bi in self.bi_list])
 
     def __iter__(self):
         yield from self.bi_list
@@ -41,7 +41,7 @@ class CBiList:
                 continue
             # 如果可以生成笔，则添加新笔
             if self.can_make_bi(klc, exist_free_klc):
-                logger.info(f"[Bi] Creating first bi: start={exist_free_klc.time_begin.to_str()}, end={klc.time_begin.to_str()}, start_fx={exist_free_klc.fx}, end_fx={klc.fx}")
+                logger.info(f"[Bi]### \nTry_Create first bi:\nstart={exist_free_klc.time_begin.to_str()},\nend={klc.time_begin.to_str()}, start_fx={exist_free_klc.fx}, end_fx={klc.fx}\n")
                 self.add_new_bi(exist_free_klc, klc)
                 self.last_end = klc
                 return True
@@ -218,7 +218,7 @@ class CBiList:
             if self.can_make_bi(_tmp_klc, self[-1].end_klc, for_virtual=True):
                 # 新增一笔
                 self.add_new_bi(self.last_end, _tmp_klc, is_sure=False)
-                logger.info(f"[Bi] u3 - Try add new bi success: {self[-1]}")
+                logger.info(f"[Bi] u3 - <<<Try add new bi success>>>: {self[-1]}")
                 return True
             elif self.update_peak(_tmp_klc, for_virtual=True):
                 logger.info(f"[Bi] u4 - Try update peak of virtual bi success: {self[-1]}")

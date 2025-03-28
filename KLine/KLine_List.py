@@ -174,15 +174,15 @@ class CKLine_List:
 
 
 def cal_seg(bi_list, seg_list: CSegListComm, last_sure_seg_start_bi_idx) -> int:
-    logger.info(f"[KLine_List] 0.0_cal_seg: bi_list_len={len(bi_list)}, seg_list_len={len(seg_list)}")
+    logger.info(f"\t" * 10 + f"[KLine_List] <<<0.0_cal_seg>>>: bi_list_len={len(bi_list)}, seg_list_len={len(seg_list)}")
     seg_list.update(bi_list)
-    logger.info(f"[KLine_List] 0.1_cal_seg: seg_list_len={len(seg_list)}")
+    logger.info(f"\t" * 10 + f"[KLine_List] <<<0.1_cal_seg>>>: seg_list_len={len(seg_list)}")
     if len(seg_list) == 0:
         for bi in bi_list:
             bi.set_seg_idx(0)
         return -1
     cur_seg: CSeg = seg_list[-1]
-    logger.info(f"[KLine_List] 0.2_cal_seg: cur_seg={cur_seg}")
+    logger.info(f"\t" * 10 + f"[KLine_List] <<<0.2_cal_seg>>>: cur_seg={cur_seg}")
     bi_idx = len(bi_list) - 1
     while bi_idx >= 0:
         bi = bi_list[bi_idx]
@@ -197,7 +197,7 @@ def cal_seg(bi_list, seg_list: CSegListComm, last_sure_seg_start_bi_idx) -> int:
             cur_seg = cur_seg.pre
         bi.set_seg_idx(cur_seg.idx)
         bi_idx -= 1
-    logger.info(f"[KLine_List] 0.3_cal_seg : last_sure_seg_start_bi_idx={last_sure_seg_start_bi_idx}")
+    logger.info(f"\t" * 10 + f"[KLine_List] <<<0.3_cal_seg>>>: last_sure_seg_start_bi_idx={last_sure_seg_start_bi_idx}")
     last_sure_seg_start_bi_idx = -1
     seg = seg_list[-1]
     while seg:
@@ -205,7 +205,7 @@ def cal_seg(bi_list, seg_list: CSegListComm, last_sure_seg_start_bi_idx) -> int:
             last_sure_seg_start_bi_idx = seg.start_bi.idx
             break
         seg = seg.pre
-    logger.info(f"[KLine_List] 0.4_cal_seg : last_sure_seg_start_bi_idx={last_sure_seg_start_bi_idx}\n\n")
+    logger.info(f"\t" * 10 + f"[KLine_List] <<<0.4_cal_seg>>>: last_sure_seg_start_bi_idx={last_sure_seg_start_bi_idx}\n\n")
 
     return last_sure_seg_start_bi_idx
 

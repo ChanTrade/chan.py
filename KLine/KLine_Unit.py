@@ -91,7 +91,8 @@ class CKLine_Unit:
         return self.time
 
     def __str__(self):
-        return f"{self.idx}:{self.time_str}/{self.kl_type} open={self.open} close={self.close} high={self.high} low={self.low} {self.trade_info}"
+        # return f"{self.idx}:{self.time_str}/{self.kl_type} o={self.open} c={self.close} h={self.high} l={self.low} {self.trade_info}"
+        return f"{self.time_str} o={self.open:.2f} c={self.close:.2f} h={self.high:.2f} l={self.low:.2f} {self.trade_info}"
 
     def check(self, autofix=False):
         '''
