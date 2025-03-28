@@ -42,3 +42,18 @@ class CTime:
 
     def __ge__(self, t2):
         return self.ts >= t2.ts
+    
+    # def __hash__(self):
+    #     return hash(self.ts)
+    
+    # def __eq__(self, t2):
+    #     return self.ts == t2.ts
+    
+    def __ne__(self, t2):
+        return self.ts != t2.ts
+    
+    def __lt__(self, t2):
+        return self.ts < t2.ts
+    
+    def __le__(self, t2):
+        return self.ts <= t2.ts

@@ -20,6 +20,7 @@ class CChanConfig:
         if conf is None:
             conf = {}
         conf = ConfigWithCheck(conf)
+        # 笔的各项配置
         self.bi_conf = CBiConfig(
             bi_algo=conf.get("bi_algo", "normal"),
             is_strict=conf.get("bi_strict", True),
@@ -28,27 +29,36 @@ class CChanConfig:
             bi_end_is_peak=conf.get('bi_end_is_peak', True),
             bi_allow_sub_peak=conf.get("bi_allow_sub_peak", True),
         )
+        # 线段的各项配置
         self.seg_conf = CSegConfig(
             seg_algo=conf.get("seg_algo", "chan"),
             left_method=conf.get("left_seg_method", "peak"),
         )
+        # 中枢的各项配置
         self.zs_conf = CZSConfig(
             need_combine=conf.get("zs_combine", True),
             zs_combine_mode=conf.get("zs_combine_mode", "zs"),
             one_bi_zs=conf.get("one_bi_zs", False),
             zs_algo=conf.get("zs_algo", "normal"),
         )
-
+        # 触发步长的各项配置
         self.trigger_step = conf.get("trigger_step", False)
+        # 跳过步长的各项配置
         self.skip_step = conf.get("skip_step", 0)
-
+        # 数据检查的各项配置
         self.kl_data_check = conf.get("kl_data_check", True)
+        # 最大K线错位计数的各项配置
         self.max_kl_misalgin_cnt = conf.get("max_kl_misalgin_cnt", 2)
+        # 最大K线不一致计数的各项配置
         self.max_kl_inconsistent_cnt = conf.get("max_kl_inconsistent_cnt", 5)
+        # 自动跳过非法线段的各项配置
         self.auto_skip_illegal_sub_lv = conf.get("auto_skip_illegal_sub_lv", False)
+        # 打印警告的各项配置
         self.print_warning = conf.get("print_warning", True)
+        # 打印错误时间的各项配置
         self.print_err_time = conf.get("print_err_time", True)
 
+        # 计算基于单根K线驱动的指标模型列表的各项配置
         self.mean_metrics: List[int] = conf.get("mean_metrics", [])
         self.trend_metrics: List[int] = conf.get("trend_metrics", [])
         self.macd_config = conf.get("macd", {"fast": 12, "slow": 26, "signal": 9})
@@ -67,13 +77,17 @@ class CChanConfig:
             'countdown_cmp2close': True,
         })
         self.boll_n = conf.get("boll_n", 20)
-
+        # 买卖点的各项配置
         self.set_bsp_config(conf)
 
         conf.check()
 
     def GetMetricModel(self):
+        '''
+        获取基于单根K线驱动的指标模型列表
+        '''
         res: List[CMACD | CTrendModel | BollModel | CDemarkEngine | RSI | KDJ] = [
+            # MACD的参数配置
             CMACD(
                 fastperiod=self.macd_config['fast'],
                 slowperiod=self.macd_config['slow'],
@@ -177,6 +191,9 @@ class ConfigWithCheck:
             del self.conf[k]
 
     def check(self):
+        '''
+        检查配置是否合法
+        '''
         if len(self.conf) > 0:
             invalid_key_lst = ",".join(list(self.conf.keys()))
             raise CChanException(f"invalid CChanConfig: {invalid_key_lst}", ErrCode.PARA_ERROR)

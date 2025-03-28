@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Add the parent directory of Debug to the system path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import copy
 from typing import List
 
@@ -25,7 +31,7 @@ if __name__ == "__main__":
     代码不能直接跑，仅用于展示如何实现小级别K线更新直接刷新CChan结果
     """
     code = "sz.000001"
-    begin_time = "2023-09-10"
+    begin_time = "2025-03-01"
     end_time = None
     data_src_type = DATA_SRC.BAO_STOCK
     lv_list = [KL_TYPE.K_60M, KL_TYPE.K_15M]
@@ -55,6 +61,17 @@ if __name__ == "__main__":
         如果是用序列化方式，这里可以采用pickle.load()
         """
         chan: CChan = copy.deepcopy(chan_snapshot)
+
+        # # Manually format the time string
+        # time_str = f"{klu_15m.time.year}{klu_15m.time.month:02}{klu_15m.time.day:02}_" \
+        #            f"{klu_15m.time.hour:02}{klu_15m.time.minute:02}{klu_15m.time.second:02}"
+        # snapshot_filename = f"chan_snapshot_{time_str}.pkl"
+
+        # try:
+        #     CChan.save_snapshot(chan, snapshot_filename)
+        # except Exception as e:
+        #     print(f"Failed to save snapshot: {e}")
+
         chan.trigger_load({KL_TYPE.K_60M: [klu_60m], KL_TYPE.K_15M: klu_15m_lst_tmp})
 
         """
@@ -72,6 +89,10 @@ if __name__ == "__main__":
             如果是序列化方式，这里可以采用pickle.dump()
             """
             chan_snapshot = chan
+            # try:
+            #     CChan.load_snapshot(snapshot_filename)
+            # except Exception as e:
+            #     print(f"Failed to load snapshot: {e}")
             klu_15m_lst_tmp = []  # 清空1分钟K线，用于下一个五分钟周期的合成
 
     CBaoStock.do_close()

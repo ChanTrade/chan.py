@@ -37,19 +37,20 @@ def parse_time_column(inp):
         minute = int(inp[14:16])
     else:
         raise Exception(f"unknown time column from csv:{inp}")
-    return CTime(year, month, day, hour, minute)
+    return CTime(year, month, day, hour, minute, auto=False)
 
 
 class CSV_API(CCommonStockApi):
     def __init__(self, code, k_type=KL_TYPE.K_DAY, begin_date=None, end_date=None, autype=None):
         self.headers_exist = True  # 第一行是否是标题，如果是数据，设置为False
         self.columns = [
+            DATA_FIELD.FIELD_NAME,
             DATA_FIELD.FIELD_TIME,
             DATA_FIELD.FIELD_OPEN,
+            DATA_FIELD.FIELD_CLOSE,
             DATA_FIELD.FIELD_HIGH,
             DATA_FIELD.FIELD_LOW,
-            DATA_FIELD.FIELD_CLOSE,
-            # DATA_FIELD.FIELD_VOLUME,
+            DATA_FIELD.FIELD_VOLUME,
             # DATA_FIELD.FIELD_TURNOVER,
             # DATA_FIELD.FIELD_TURNRATE,
         ]  # 每一列字段
@@ -59,7 +60,7 @@ class CSV_API(CCommonStockApi):
     def get_kl_data(self):
         cur_path = os.path.dirname(os.path.realpath(__file__))
         k_type = self.k_type.name[2:].lower()
-        file_path = f"{cur_path}/../{self.code}_{k_type}.csv"
+        file_path = f"{cur_path}/../Data/{self.code}_{k_type}.csv"
         if not os.path.exists(file_path):
             raise CChanException(f"file not exist: {file_path}", ErrCode.SRC_DATA_NOT_FOUND)
 
@@ -73,6 +74,7 @@ class CSV_API(CCommonStockApi):
                 continue
             if self.end_date is not None and data[self.time_column_idx] > self.end_date:
                 continue
+
             yield CKLine_Unit(create_item_dict(data, self.columns))
 
     def SetBasciInfo(self):

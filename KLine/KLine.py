@@ -19,7 +19,7 @@ class CKLine(CKLine_Combiner[CKLine_Unit]):
             fx_token = "^"
         elif self.fx == FX_TYPE.BOTTOM:
             fx_token = "_"
-        return f"{self.idx}th{fx_token}:{self.time_begin}~{self.time_end}({self.kl_type}|{len(self.lst)}) low={self.low} high={self.high}"
+        return f"{self.idx}th IsFx:{fx_token}:{self.time_begin}~{self.time_end}({self.kl_type}|{len(self.lst)}) low={self.low} high={self.high}"
 
     def GetSubKLC(self):
         # 可能会出现相邻的两个KLC的子KLC会有重复
@@ -38,6 +38,7 @@ class CKLine(CKLine_Combiner[CKLine_Unit]):
         return min(x.low for x in self.lst)
 
     def has_gap_with_next(self) -> bool:
+        # 判断当前K线与下一个K线是否存在gap
         assert self.next is not None
         # 相同也算重叠，也就是没有gap
         return not has_overlap(self.get_klu_min_low(), self.get_klu_max_high(), self.next.get_klu_min_low(), self.next.get_klu_max_high(), equal=True)

@@ -23,10 +23,13 @@ class KL_TYPE(Enum):
 
 
 class KLINE_DIR(Enum):
-    UP = auto()
-    DOWN = auto()
-    COMBINE = auto()
-    INCLUDED = auto()
+    '''
+    合并K线的方向
+    '''
+    UP = auto()  # 向上合并
+    DOWN = auto()  # 向下合并
+    COMBINE = auto()  # 合并
+    INCLUDED = auto()  # 包含
 
 
 class FX_TYPE(Enum):
@@ -116,6 +119,7 @@ class MACD_ALGO(Enum):
 
 
 class DATA_FIELD:
+    FIELD_NAME = "symbol"
     FIELD_TIME = "time_key"
     FIELD_OPEN = "open"
     FIELD_HIGH = "high"
@@ -125,5 +129,15 @@ class DATA_FIELD:
     FIELD_TURNOVER = "turnover"  # 成交额
     FIELD_TURNRATE = "turnover_rate"  # 换手率
 
+class LineStatus(Enum):
+    '''
+    线段状态
+    '''
+    Unknown = auto()  # 未知
+    NewGenerated = auto()  # 新线段生成
+    NotBreaking = auto()  # 未破坏
+    BreakingTypeOne = auto()  # 线段一类破坏
+    BreakingTypeTwo = auto()  # 线段二类破坏
+    Completed = auto()  # 线段完成
 
 TRADE_INFO_LST = [DATA_FIELD.FIELD_VOLUME, DATA_FIELD.FIELD_TURNOVER, DATA_FIELD.FIELD_TURNRATE]

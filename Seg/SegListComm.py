@@ -8,7 +8,8 @@ from Common.ChanException import CChanException, ErrCode
 
 from .Seg import CSeg
 from .SegConfig import CSegConfig
-
+from Common.func_util import logger
+from Common.CEnum import LineStatus
 SUB_LINE_TYPE = TypeVar('SUB_LINE_TYPE', CBi, "CSeg")
 
 
@@ -50,23 +51,31 @@ class CSegListComm(Generic[SUB_LINE_TYPE]):
         return False
 
     def collect_first_seg(self, bi_lst: CBiList):
+        logger.info(f"[SegListComm] collect_first_seg --->: {len(bi_lst)}")
         if len(bi_lst) < 3:
             return
         if self.config.left_method == LEFT_SEG_METHOD.PEAK:
+            logger.info(f"[SegListComm] LeftSegMethod: {self.config.left_method}")
             _high = max(bi._high() for bi in bi_lst)
             _low = min(bi._low() for bi in bi_lst)
             if abs(_high-bi_lst[0].get_begin_val()) >= abs(_low-bi_lst[0].get_begin_val()):
+                logger.info(f"[SegListComm]  Up-Seg high-low: {_high-_low}, high-begin: {_high-bi_lst[0].get_begin_val()}, low-begin: {_low-bi_lst[0].get_begin_val()}")
                 peak_bi = FindPeakBi(bi_lst, is_high=True)
                 assert peak_bi is not None
                 self.add_new_seg(bi_lst, peak_bi.idx, is_sure=False, seg_dir=BI_DIR.UP, split_first_seg=False, reason="0seg_find_high")
+                logger.info(f"[SegListComm] collect_first_seg <---: Up-Seg")
             else:
+                logger.info(f"[SegListComm]  Dwn-Seg high-low: {_high-_low}, high-begin: {_high-bi_lst[0].get_begin_val()}, low-begin: {_low-bi_lst[0].get_begin_val()}")
                 peak_bi = FindPeakBi(bi_lst, is_high=False)
                 assert peak_bi is not None
                 self.add_new_seg(bi_lst, peak_bi.idx, is_sure=False, seg_dir=BI_DIR.DOWN, split_first_seg=False, reason="0seg_find_low")
+                logger.info(f"[SegListComm] collect_first_seg <---: Dwn-Seg")
             self.collect_left_as_seg(bi_lst)
         elif self.config.left_method == LEFT_SEG_METHOD.ALL:
+            logger.info(f"[SegListComm] LeftSegMethod: {self.config.left_method}")
             _dir = BI_DIR.UP if bi_lst[-1].get_end_val() >= bi_lst[0].get_begin_val() else BI_DIR.DOWN
             self.add_new_seg(bi_lst, bi_lst[-1].idx, is_sure=False, seg_dir=_dir, split_first_seg=False, reason="0seg_collect_all")
+            logger.info(f"[SegListComm] collect_first_seg <---: All Seg Method, {_dir}-Seg")
         else:
             raise CChanException(f"unknown seg left_method = {self.config.left_method}", ErrCode.PARA_ERROR)
 
@@ -84,61 +93,96 @@ class CSegListComm(Generic[SUB_LINE_TYPE]):
         self.collect_left_as_seg(bi_lst)
 
     def collect_segs(self, bi_lst):
+        logger.info(f"[SegListComm] collect_segs --->: bi_lst_len={len(bi_lst)}")
         last_bi = bi_lst[-1]
         last_seg_end_bi = self[-1].end_bi
         if last_bi.idx-last_seg_end_bi.idx < 3:
+            logger.info(f"[SegListComm] collect_segs <---: bi_lst_len={len(bi_lst)}, last_bi.idx-last_seg_end_bi.idx={last_bi.idx-last_seg_end_bi.idx}")
             return
         if last_seg_end_bi.is_down() and last_bi.get_end_val() <= last_seg_end_bi.get_end_val():
             if peak_bi := FindPeakBi(bi_lst[last_seg_end_bi.idx+3:], is_high=True):
                 self.add_new_seg(bi_lst, peak_bi.idx, is_sure=False, seg_dir=BI_DIR.UP, reason="collectleft_find_high_force")
                 self.collect_left_seg(bi_lst)
+            else:
+                logger.info(f"[SegListComm] collect_segs <---: bi_lst_len={len(bi_lst)}, last_seg_end_bi.is_down() and last_bi.get_end_val() <= last_seg_end_bi.get_end_val() failed")
         elif last_seg_end_bi.is_up() and last_bi.get_end_val() >= last_seg_end_bi.get_end_val():
             if peak_bi := FindPeakBi(bi_lst[last_seg_end_bi.idx+3:], is_high=False):
                 self.add_new_seg(bi_lst, peak_bi.idx, is_sure=False, seg_dir=BI_DIR.DOWN, reason="collectleft_find_low_force")
                 self.collect_left_seg(bi_lst)
+            else:
+                logger.info(f"[SegListComm] collect_segs <---: bi_lst_len={len(bi_lst)}, last_seg_end_bi.is_up() and last_bi.get_end_val() >= last_seg_end_bi.get_end_val() failed")
         # 剩下线段的尾部相比于最后一个线段的尾部，高低关系和最后一个虚线段的方向一致
-        elif self.config.left_method == LEFT_SEG_METHOD.ALL:  # 容易找不到二类买卖点！！
+        elif self.config.left_method == LEFT_SEG_METHOD.ALL:
+            # 容易找不到二类买卖点！！
             self.collect_left_as_seg(bi_lst)
         elif self.config.left_method == LEFT_SEG_METHOD.PEAK:
             self.collect_left_seg_peak_method(last_seg_end_bi, bi_lst)
         else:
             raise CChanException(f"unknown seg left_method = {self.config.left_method}", ErrCode.PARA_ERROR)
+        logger.info(f"[SegListComm] collect_segs <---: seg_cnt={len(self.lst)}")
 
     def collect_left_seg(self, bi_lst: CBiList):
+        logger.info(f"[SegListComm] collect_left_seg --->: bi_lst_len={len(bi_lst)}")
         if len(self) == 0:
             self.collect_first_seg(bi_lst)
         else:
             self.collect_segs(bi_lst)
+        logger.info(f"[SegListComm] collect_left_seg <---: seg_cnt={len(self.lst)}")
 
     def collect_left_as_seg(self, bi_lst: CBiList):
+        logger.info(f"[SegListComm] collect_left_as_seg --->:")
         last_bi = bi_lst[-1]
         last_seg_end_bi = self[-1].end_bi
         if last_seg_end_bi.idx+1 >= len(bi_lst):
+            logger.info(f"[SegListComm] collect_left_as_seg <---: last_seg_end_bi.idx+1={last_seg_end_bi.idx+1} >= len(bi_lst)={len(bi_lst)}")
             return
         if last_seg_end_bi.dir == last_bi.dir:
+            logger.info(f"[SegListComm] collect_left_as_seg --->: last_seg_end_bi.dir{last_seg_end_bi.dir} == last_bi.dir{last_bi.dir} add_new_seg: {last_bi.idx-1} reason: collect_left_1")
             self.add_new_seg(bi_lst, last_bi.idx-1, is_sure=False, reason="collect_left_1")
         else:
+            logger.info(f"[SegListComm] collect_left_as_seg --->: last_seg_end_bi.dir{last_seg_end_bi.dir} != last_bi.dir{last_bi.dir} add_new_seg: {last_bi.idx} reason: collect_left_0")
             self.add_new_seg(bi_lst, last_bi.idx, is_sure=False, reason="collect_left_0")
+        logger.info(f"[SegListComm] collect_left_as_seg <---:")
+        return
 
     def try_add_new_seg(self, bi_lst, end_bi_idx: int, is_sure=True, seg_dir=None, split_first_seg=True, reason="normal"):
+        logger.info(f"[SegListComm] try_add_new_seg --->: end_bi_idx: {end_bi_idx}, is_sure: {is_sure}, seg_dir: {seg_dir}, split_first_seg: {split_first_seg}, reason: {reason}")
+        # 如果线段列表为空，并且需要分割第一个线段，并且最后一个笔的索引大于等于3
         if len(self) == 0 and split_first_seg and end_bi_idx >= 3:
+            # 如果最后一个笔是向下笔，并且找到的峰值笔是向下笔，并且峰值笔的索引是0，并且峰值笔的值小于等于第一笔的值
             if peak_bi := FindPeakBi(bi_lst[end_bi_idx-3::-1], bi_lst[end_bi_idx].is_down()):
                 if (peak_bi.is_down() and (peak_bi._low() < bi_lst[0]._low() or peak_bi.idx == 0)) or \
                    (peak_bi.is_up() and (peak_bi._high() > bi_lst[0]._high() or peak_bi.idx == 0)):  # 要比第一笔开头还高/低（因为没有比较到）
+                    # 生成新线段
                     self.add_new_seg(bi_lst, peak_bi.idx, is_sure=False, seg_dir=peak_bi.dir, reason="split_first_1st")
                     self.add_new_seg(bi_lst, end_bi_idx, is_sure=False, reason="split_first_2nd")
+                    logger.info(f"[SegListComm] split_first new_seg <---: last_seg: {self.lst[-1]}")
                     return
+                else:
+                    logger.info(f"[SegListComm] try_add_new_seg <---: if case failed u-0")
+            else:
+                logger.info(f"[SegListComm] try_add_new_seg <---: if case failed u-1")
+        else:
+            logger.info(f"[SegListComm] try_add_new_seg <---: if case failed u-2")
+
+        # 生成新线段
+        logger.info(f"[SegListComm] generate new_seg --->: seg_cnt: {len(self)}")
         bi1_idx = 0 if len(self) == 0 else self[-1].end_bi.idx+1
         bi1 = bi_lst[bi1_idx]
         bi2 = bi_lst[end_bi_idx]
-        self.lst.append(CSeg(len(self.lst), bi1, bi2, is_sure=is_sure, seg_dir=seg_dir, reason=reason))
+        new_seg = CSeg(len(self.lst), bi1, bi2, status=LineStatus.NewGenerated, is_sure=is_sure, seg_dir=seg_dir, reason=reason)
+        self.lst.append(new_seg)
 
         if len(self.lst) >= 2:
             self.lst[-2].next = self.lst[-1]
             self.lst[-1].pre = self.lst[-2]
+        # 更新线段的bi列表
         self.lst[-1].update_bi_list(bi_lst, bi1_idx, end_bi_idx)
+        logger.info(f"[SegListComm] try_add_new_seg <---: last_seg: {self.lst[-1]}")
+        return
 
     def add_new_seg(self, bi_lst: CBiList, end_bi_idx: int, is_sure=True, seg_dir=None, split_first_seg=True, reason="normal"):
+        logger.info(f"[SegListComm] add_new_seg --->: end_bi_idx: {end_bi_idx}, is_sure: {is_sure}, seg_dir: {seg_dir}, split_first_seg: {split_first_seg}, reason: {reason}")
         try:
             self.try_add_new_seg(bi_lst, end_bi_idx, is_sure, seg_dir, split_first_seg, reason)
         except CChanException as e:
@@ -147,6 +191,7 @@ class CSegListComm(Generic[SUB_LINE_TYPE]):
             raise e
         except Exception as e:
             raise e
+        logger.info(f"[SegListComm] add_new_seg <---: last_seg: {self.lst[-1]}")
         return True
 
     @abc.abstractmethod
@@ -158,6 +203,7 @@ class CSegListComm(Generic[SUB_LINE_TYPE]):
 
 
 def FindPeakBi(bi_lst: Union[CBiList, List[CBi]], is_high):
+    logger.info(f"[SegListComm] FindPeakBi --->: is_high: {is_high}")
     peak_val = float("-inf") if is_high else float("inf")
     peak_bi = None
     for bi in bi_lst:
@@ -166,4 +212,5 @@ def FindPeakBi(bi_lst: Union[CBiList, List[CBi]], is_high):
                 continue
             peak_val = bi.get_end_val()
             peak_bi = bi
+    logger.info(f"[SegListComm] FindPeakBi <---: peak_bi: {peak_bi}")
     return peak_bi

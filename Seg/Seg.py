@@ -1,24 +1,28 @@
-from typing import Generic, List, Optional, Self, TypeVar
+from typing import Generic, List, Optional, TypeVar
+from functools import lru_cache as makecache
+Self = TypeVar('T', bound='CSeg')
 
 from Bi.Bi import CBi
 from Common.CEnum import BI_DIR, MACD_ALGO, TREND_LINE_SIDE
 from Common.ChanException import CChanException, ErrCode
 from KLine.KLine_Unit import CKLine_Unit
 from Math.TrendLine import CTrendLine
-
+from Common.CTime import CTime
 from .EigenFX import CEigenFX
-
+from Common.func_util import logger
+from Common.CEnum import LineStatus
 LINE_TYPE = TypeVar('LINE_TYPE', CBi, "CSeg")
 
 
 class CSeg(Generic[LINE_TYPE]):
-    def __init__(self, idx: int, start_bi: LINE_TYPE, end_bi: LINE_TYPE, is_sure=True, seg_dir=None, reason="normal"):
+    def __init__(self, idx: int, start_bi: LINE_TYPE, end_bi: LINE_TYPE, status=LineStatus.Unknown, is_sure=True, seg_dir=None, reason="normal"):
         assert start_bi.idx == 0 or start_bi.dir == end_bi.dir or not is_sure, f"{start_bi.idx} {end_bi.idx} {start_bi.dir} {end_bi.dir}"
         self.idx = idx
         self.start_bi = start_bi
         self.end_bi = end_bi
         self.is_sure = is_sure
         self.dir = end_bi.dir if seg_dir is None else seg_dir
+        self.status = status if status is not None else LineStatus.Unknown
 
         from ZS.ZS import CZS
         self.zs_lst: List[CZS[LINE_TYPE]] = []
@@ -41,6 +45,7 @@ class CSeg(Generic[LINE_TYPE]):
         self.check()
 
         self.ele_inside_is_sure = False
+        logger.info(f"[Seg] __init__ <---: {self}")
 
     def set_seg_idx(self, idx):
         self.seg_idx = idx
@@ -57,7 +62,7 @@ class CSeg(Generic[LINE_TYPE]):
             raise CChanException(f"线段({self.start_bi.idx}-{self.end_bi.idx})长度不能小于2! idx={self.idx}", ErrCode.SEG_LEN_ERR)
 
     def __str__(self):
-        return f"{self.start_bi.idx}->{self.end_bi.idx}: {self.dir}  {self.is_sure}"
+        return f"idx={self.idx} status={self.status} {self.start_bi.get_begin_klu().time}->{self.end_bi.get_end_klu().time}: dir={self.dir}  is_sure={self.is_sure} reason={self.reason}"
 
     def add_zs(self, zs):
         self.zs_lst = [zs] + self.zs_lst  # 因为中枢是反序加入的
@@ -130,12 +135,15 @@ class CSeg(Generic[LINE_TYPE]):
             return (end_klu.high-begin_klu.low)/begin_klu.low
 
     def update_bi_list(self, bi_lst, idx1, idx2):
+        logger.info(f"[Seg] update_bi_list --->: bi1={idx1}, end_bi={idx2}")
         for bi_idx in range(idx1, idx2+1):
             bi_lst[bi_idx].parent_seg = self
+            logger.info(f"[Seg] update_bi_list --->: bi_lst[{bi_idx}]={bi_lst[bi_idx]}")
             self.bi_list.append(bi_lst[bi_idx])
         if len(self.bi_list) >= 3:
             self.support_trend_line = CTrendLine(self.bi_list, TREND_LINE_SIDE.INSIDE)
             self.resistance_trend_line = CTrendLine(self.bi_list, TREND_LINE_SIDE.OUTSIDE)
+        logger.info(f"[Seg] update_bi_list <---")
 
     def get_first_multi_bi_zs(self):
         return next((zs for zs in self.zs_lst if not zs.is_one_bi_zs()), None)
@@ -151,3 +159,61 @@ class CSeg(Generic[LINE_TYPE]):
 
     def get_multi_bi_zs_cnt(self):
         return sum(not zs.is_one_bi_zs() for zs in self.zs_lst)
+
+    @staticmethod
+    def InfoAsTable(seg: 'CSeg', output_file: str = None):
+        """
+        Display Seg properties in a table format with columns.
+
+        @param seg: CSeg instance to display.
+        @param output_file: Optional file path to write output to. If None, prints to console.
+        """
+        headers = [
+            "Dir", "Sure", "BeginTime", "EndTime", "BeginVal", "EndVal",
+            "High", "Low", "KLU_Cnt", "BiCnt", "ZsCnt", "MultiBiZsCnt",
+            "HasNext", "HasPrev", "HasTrendLine"
+        ]
+        
+        values = [
+            str(seg.dir),
+            str(seg.is_sure),
+            seg.get_begin_klu().time,
+            seg.get_end_klu().time,
+            f"{seg.get_begin_val():.2f}",
+            f"{seg.get_end_val():.2f}",
+            f"{seg._high():.2f}",
+            f"{seg._low():.2f}",
+            str(seg.get_klu_cnt()),
+            str(len(seg.bi_list)),
+            str(len(seg.zs_lst)),
+            str(seg.get_multi_bi_zs_cnt()),
+            str(seg.next is not None),
+            str(seg.pre is not None),
+            str(seg.support_trend_line is not None),
+            str(seg.resistance_trend_line is not None)
+        ]
+
+        # Calculate column widths, setting a fixed width for the 'Dir' column
+        fixed_dir_width = 10  # Adjust this value as needed
+        widths = [
+            max(fixed_dir_width, len(headers[0])),  # Fixed width for 'Dir'
+            *[
+                max(len(h), len(str(v))) for h, v in zip(headers[1:], values[1:])
+            ]
+        ]
+        
+        # Create output lines
+        header_line = " | ".join(h.ljust(w) for h, w in zip(headers, widths))
+        separator = "-" * len(header_line)
+        value_line = " | ".join(str(v).ljust(w) for v, w in zip(values, widths))
+        
+        # Output to file or console
+        if output_file:
+            with open(output_file, 'a') as f:
+                f.write(header_line + '\n')
+                f.write(value_line + '\n')
+                f.write(separator + '\n')
+        else:
+            print(header_line)
+            print(separator)
+            print(value_line)

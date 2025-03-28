@@ -4,7 +4,7 @@ from Bi.Bi import CBi
 from Bi.BiList import CBiList
 from Common.CEnum import BI_DIR, FX_TYPE, KLINE_DIR, SEG_TYPE
 from Common.ChanException import CChanException, ErrCode
-from Common.func_util import revert_bi_dir
+from Common.func_util import revert_bi_dir, logger
 
 from .Eigen import CEigen
 
@@ -18,48 +18,66 @@ class CEigenFX:
         self.exclude_included = exclude_included
         self.kl_dir = KLINE_DIR.UP if _dir == BI_DIR.UP else KLINE_DIR.DOWN
         self.last_evidence_bi: Optional[CBi] = None
+        self.which_ele = -1
 
     def treat_first_ele(self, bi: CBi) -> bool:
+        logger.info(f"[EigenFX] treat_first_ele --->: , which_ele: {self.which_ele} {bi}")
         self.ele[0] = CEigen(bi, self.kl_dir)
+        self.which_ele = 0
+        logger.info(f"[EigenFX] treat_first_ele <---: , which_ele: {self.which_ele} {bi}")
         return False
 
     def treat_second_ele(self, bi: CBi) -> bool:
         assert self.ele[0] is not None
+        logger.info(f"[EigenFX] treat_second_ele --->: , which_ele: {self.which_ele} {bi}")
         combine_dir = self.ele[0].try_add(bi, exclude_included=self.exclude_included)
         if combine_dir != KLINE_DIR.COMBINE:  # 不能合并
             self.ele[1] = CEigen(bi, self.kl_dir)
+            self.which_ele = 1
             if (self.is_up() and self.ele[1].high < self.ele[0].high) or \
                (self.is_down() and self.ele[1].low > self.ele[0].low):  # 前两元素不可能成为分形
+                logger.info(f"[EigenFX] treat_second_ele reset <---: , which_ele: {self.which_ele} {bi}")
                 return self.reset()
+        logger.info(f"[EigenFX] treat_second_ele <---: , which_ele: {self.which_ele} {bi}")
         return False
 
     def treat_third_ele(self, bi: CBi) -> bool:
         assert self.ele[0] is not None
         assert self.ele[1] is not None
+        logger.info(f"[EigenFX] treat_third_ele --->: , which_ele: {self.which_ele} {bi}")
         self.last_evidence_bi = bi
         allow_top_equal = (1 if bi.is_down() else -1) if self.exclude_included else None
         combine_dir = self.ele[1].try_add(bi, allow_top_equal=allow_top_equal)
         if combine_dir == KLINE_DIR.COMBINE:
+            logger.info(f"[EigenFX] treat_third_ele combine_dir == KLINE_DIR.COMBINE <---: , which_ele: {self.which_ele} {bi}")
             return False
         self.ele[2] = CEigen(bi, combine_dir)
+        self.which_ele = 2
         if not self.actual_break():
+            logger.info(f"[EigenFX] treat_third_ele reset <---: , which_ele: {self.which_ele} {bi}")
             return self.reset()
         self.ele[1].update_fx(self.ele[0], self.ele[2], exclude_included=self.exclude_included, allow_top_equal=allow_top_equal)  # type: ignore
         fx = self.ele[1].fx
         is_fx = (self.is_up() and fx == FX_TYPE.TOP) or (self.is_down() and fx == FX_TYPE.BOTTOM)
+        logger.info(f"[EigenFX] treat_third_ele <---: , which_ele: {self.which_ele} {bi}, is_fx: {is_fx}")
         return True if is_fx else self.reset()
 
     def add(self, bi: CBi) -> bool:  # 返回是否出现分形
         assert bi.dir != self.dir
+        ret = False
         self.lst.append(bi)
+        logger.info(f"[EigenFX] dir: {self.dir} , which_ele: {self.which_ele} add --->: {bi}")
         if self.ele[0] is None:  # 第一元素
-            return self.treat_first_ele(bi)
+            ret = self.treat_first_ele(bi)
         elif self.ele[1] is None:  # 第二元素
-            return self.treat_second_ele(bi)
+            ret = self.treat_second_ele(bi)
         elif self.ele[2] is None:  # 第三元素
-            return self.treat_third_ele(bi)
+            ret = self.treat_third_ele(bi)
         else:
             raise CChanException(f"特征序列3个都找齐了还没处理!! 当前笔:{bi.idx},当前:{str(self)}", ErrCode.SEG_EIGEN_ERR)
+        
+        logger.info(f"[EigenFX] dir: {self.dir} , which_ele: {self.which_ele} add <---: {bi}, ret: {ret}")
+        return ret
 
     def reset(self):
         bi_tmp_list = list(self.lst[1:])

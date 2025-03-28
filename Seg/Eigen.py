@@ -1,4 +1,5 @@
-from typing import Self
+from typing import TypeVar
+Self = TypeVar('T', bound='CEigen')
 
 from Bi.Bi import CBi
 from Combiner.KLine_Combiner import CKLine_Combiner

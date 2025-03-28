@@ -1,5 +1,7 @@
 from Chan import CChan
 from ChanConfig import CChanConfig
+from Bi.Bi import CBi
+from Seg.Seg import CSeg
 from Common.CEnum import AUTYPE, DATA_SRC, KL_TYPE
 from Plot.AnimatePlotDriver import CAnimateDriver
 from Plot.PlotDriver import CPlotDriver
@@ -31,7 +33,7 @@ if __name__ == "__main__":
         "plot_kline_combine": True,
         "plot_bi": True,
         "plot_seg": True,
-        "plot_eigen": False,
+        "plot_eigen": True,
         "plot_zs": True,
         "plot_macd": False,
         "plot_mean": False,
@@ -53,7 +55,7 @@ if __name__ == "__main__":
             # "disp_end": True,
         },
         "figure": {
-            "x_range": 200,
+            "x_range": 1000,
         },
         "marker": {
             # "markers": {  # text, position, color
@@ -86,3 +88,16 @@ if __name__ == "__main__":
             plot_config=plot_config,
             plot_para=plot_para,
         )
+
+    print(f"Number of levels in chan.lv_list: {len(chan.lv_list)}")
+    # Print bi_list for each level
+    for lv in range(len(chan.lv_list)):
+        print(f"\nLevel {chan.lv_list[lv]} bi_list:")
+        bi_list = chan[lv].bi_list
+        for i, bi in enumerate(bi_list):
+            CBi.InfoAsTable(bi, f"./bi_info_{lv}.txt")
+
+        print(f"\nLevel {chan.lv_list[lv]} seg_list:")
+        seg_list = chan[lv].seg_list
+        for i, seg in enumerate(seg_list):
+            CSeg.InfoAsTable(seg, f"./seg_info_{lv}.txt")

@@ -37,6 +37,9 @@ if __name__ == "__main__":
     last_buy_price = None
     for klu in data_src.get_kl_data():  # 获取单根K线
         chan.trigger_load({KL_TYPE.K_DAY: [klu]})  # 喂给CChan新增k线
+        # Print all Bi with start/end info
+        for bi in chan[0].bi_list:
+            print(f"Bi {bi.idx}: start={bi.start_klu.time}, end={bi.end_klu.time}, dir={bi.dir}")
         bsp_list = chan.get_bsp()
         if not bsp_list:
             continue

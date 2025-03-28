@@ -86,10 +86,17 @@ class CKLine_Unit:
     def set_idx(self, idx):
         self.__idx: int = idx
 
+    @property
+    def _time(self) -> CTime:
+        return self.time
+
     def __str__(self):
-        return f"{self.idx}:{self.time}/{self.kl_type} open={self.open} close={self.close} high={self.high} low={self.low} {self.trade_info}"
+        return f"{self.idx}:{self.time_str}/{self.kl_type} open={self.open} close={self.close} high={self.high} low={self.low} {self.trade_info}"
 
     def check(self, autofix=False):
+        '''
+        检查K线数据是否合法
+        '''
         if self.low > min([self.low, self.open, self.high, self.close]):
             if autofix:
                 self.low = min([self.low, self.open, self.high, self.close])
@@ -102,42 +109,66 @@ class CKLine_Unit:
                 raise CChanException(f"{self.time} high price={self.high} is not max of [low={self.low}, open={self.open}, high={self.high}, close={self.close}]", ErrCode.KL_DATA_INVALID)
 
     def add_children(self, child):
+        '''
+        添加子K线
+        '''
         self.sub_kl_list.append(child)
 
     def set_parent(self, parent: 'CKLine_Unit'):
+        '''
+        设置父K线
+        '''
         self.sup_kl = parent
 
     def get_children(self):
+        '''
+        获取子K线列表
+        '''
         yield from self.sub_kl_list
 
+    @property
     def _low(self):
         return self.low
 
+    @property 
     def _high(self):
         return self.high
 
+    # 计算基于裸K的各种指标
     def set_metric(self, metric_model_lst: list) -> None:
         for metric_model in metric_model_lst:
             if isinstance(metric_model, CMACD):
+                # 使用当前K线的收盘价 计算 MACD 指标
                 self.macd: CMACD_item = metric_model.add(self.close)
             elif isinstance(metric_model, CTrendModel):
                 if metric_model.type not in self.trend:
                     self.trend[metric_model.type] = {}
+                    # 使用当前K线的收盘价 计算 趋势指标
                 self.trend[metric_model.type][metric_model.T] = metric_model.add(self.close)
             elif isinstance(metric_model, BollModel):
+                # 使用当前K线的收盘价 计算 BOLL 指标
                 self.boll: BOLL_Metric = metric_model.add(self.close)
             elif isinstance(metric_model, CDemarkEngine):
+                # 使用当前K线的收盘价 计算 Demark 指标
                 self.demark = metric_model.update(idx=self.idx, close=self.close, high=self.high, low=self.low)
             elif isinstance(metric_model, RSI):
+                # 使用当前K线的收盘价 计算 RSI 指标
                 self.rsi = metric_model.add(self.close)
             elif isinstance(metric_model, KDJ):
+                # 使用当前K线的最高价、最低价、收盘价 计算 KDJ 指标
                 self.kdj = metric_model.add(self.high, self.low, self.close)
 
     def get_parent_klc(self):
+        '''
+        获取父K线
+        '''
         assert self.sup_kl is not None
         return self.sup_kl.klc
 
     def include_sub_lv_time(self, sub_lv_t: str) -> bool:
+        '''
+        判断当前K线是否包含子级别K线
+        '''
         if self.time.to_str() == sub_lv_t:
             return True
         for sub_klu in self.sub_kl_list:
@@ -148,7 +179,13 @@ class CKLine_Unit:
         return False
 
     def set_pre_klu(self, pre_klu: Optional['CKLine_Unit']):
+        # 设置当前K线的前一个K线
         if pre_klu is None:
             return
         pre_klu.next = self
         self.pre = pre_klu
+
+    def Info(self):
+        # 获取当前K线的信息
+        str = (f"{self.kl_type} - kid:{self.idx:05d}:{self.time} open={self.open:.2f} close={self.close:.2f} high={self.high:.2f} low={self.low:.2f}")
+        return str
